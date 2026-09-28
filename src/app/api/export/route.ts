@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const items = await listItems({
       format: searchParams.get("format") ?? undefined,
+      genre: searchParams.get("genre") ?? undefined,
       q: searchParams.get("q") ?? undefined,
       sort: (searchParams.get("sort") as "value" | "title" | "newest") ?? "title",
     });

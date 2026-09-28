@@ -329,6 +329,7 @@ export function AddFlow() {
           upc: c.upc ?? upcHint,
           tmdb_id: c.tmdb_id,
           poster_path: c.poster_path,
+          genres: c.genres,
           force,
         }),
       });
@@ -517,6 +518,11 @@ export function AddFlow() {
                 {c.year ?? "—"} · {c.format.toUpperCase()} · {c.confidence} ·{" "}
                 {c.source}
               </div>
+              {c.genres.length > 0 ? (
+                <div className="truncate text-xs text-zinc-500">
+                  {c.genres.join(" · ")}
+                </div>
+              ) : null}
             </div>
             <span className="text-xs font-semibold text-amber-400">Add</span>
           </button>

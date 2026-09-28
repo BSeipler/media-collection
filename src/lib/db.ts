@@ -6,6 +6,7 @@ import type {
   NewItemInput,
   Settings,
 } from "./types";
+import { parseGenres, serializeGenres } from "./genres";
 import { effectiveValueCents } from "./money";
 
 let cached: Connection | null = null;
@@ -47,6 +48,7 @@ export async function ensureSchema(): Promise<void> {
       condition TEXT DEFAULT 'used',
       tmdb_id INTEGER,
       poster_path TEXT,
+      genres TEXT,
       notes TEXT,
       estimated_cents INTEGER,
       estimate_low_cents INTEGER,
@@ -88,8 +90,16 @@ export async function ensureSchema(): Promise<void> {
       "ALTER TABLE items ADD COLUMN has_custom_poster INTEGER NOT NULL DEFAULT 0",
     );
   }
+  if (!cols.some((c) => c.name === "genres")) {
+    await db.exec("ALTER TABLE items ADD COLUMN genres TEXT");
+  }
 
   schemaReady = true;
+}
+
+function rowToItem(row: Record<string, unknown> | null | undefined): Item | null {
+  if (!row) return null;
+  return { ...(row as unknown as Item), genres: parseGenres(row.genres) };
 }
 
 export async function getSettings(): Promise<Settings> {
@@ -111,6 +121,7 @@ export async function updateLotCost(lotCostCents: number): Promise<Settings> {
 
 export async function listItems(opts?: {
   format?: string;
+  genre?: string;
   q?: string;
   sort?: "value" | "title" | "newest";
 }): Promise<Item[]> {
@@ -122,6 +133,12 @@ export async function listItems(opts?: {
   if (opts?.format && opts.format !== "all") {
     clauses.push("format = ?");
     args.push(opts.format);
+  }
+  if (opts?.genre && opts.genre !== "all") {
+    clauses.push(
+      "EXISTS (SELECT 1 FROM json_each(items.genres) AS je WHERE je.value = ?)",
+    );
+    args.push(opts.genre);
   }
   if (opts?.q?.trim()) {
     clauses.push("(title LIKE ? OR upc LIKE ?)");
@@ -137,15 +154,54 @@ export async function listItems(opts?: {
       "ORDER BY COALESCE(override_cents, estimated_cents, -1) DESC, title COLLATE NOCASE ASC";
   }
 
-  const rows = await db.all(`SELECT * FROM items ${where} ${order}`, ...args);
-  return rows as Item[];
+  const rows = (await db.all(
+    `SELECT * FROM items ${where} ${order}`,
+    ...args,
+  )) as Array<Record<string, unknown>>;
+  return rows.map((row) => rowToItem(row)!);
+}
+
+export async function listGenreNames(): Promise<string[]> {
+  await ensureSchema();
+  const db = getDb();
+  const rows = (await db.all(
+    `SELECT DISTINCT je.value AS genre
+     FROM items, json_each(items.genres) AS je
+     WHERE typeof(je.value) = 'text' AND je.value != ''
+     ORDER BY je.value COLLATE NOCASE`,
+  )) as Array<{ genre: string }>;
+  return rows.map((row) => row.genre);
+}
+
+export async function listItemsMissingGenres(): Promise<
+  Array<{ id: number; tmdb_id: number }>
+> {
+  await ensureSchema();
+  const db = getDb();
+  const rows = await db.all(
+    `SELECT id, tmdb_id FROM items
+     WHERE genres IS NULL AND tmdb_id IS NOT NULL`,
+  );
+  return rows as Array<{ id: number; tmdb_id: number }>;
+}
+
+export async function setItemGenres(id: number, genres: string[]): Promise<void> {
+  await ensureSchema();
+  const db = getDb();
+  await db.run(
+    "UPDATE items SET genres = ? WHERE id = ?",
+    serializeGenres(genres),
+    id,
+  );
 }
 
 export async function getItem(id: number): Promise<Item | null> {
   await ensureSchema();
   const db = getDb();
-  const row = await db.get("SELECT * FROM items WHERE id = ?", id);
-  return (row as Item) ?? null;
+  const row = (await db.get("SELECT * FROM items WHERE id = ?", id)) as
+    | Record<string, unknown>
+    | undefined;
+  return rowToItem(row);
 }
 
 export async function getComps(itemId: number): Promise<Comp[]> {
@@ -162,8 +218,8 @@ export async function createItem(input: NewItemInput): Promise<Item> {
   await ensureSchema();
   const db = getDb();
   const result = await db.run(
-    `INSERT INTO items (title, year, format, upc, condition, tmdb_id, poster_path, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO items (title, year, format, upc, condition, tmdb_id, poster_path, notes, genres)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     input.title,
     input.year ?? null,
     input.format,
@@ -172,6 +228,7 @@ export async function createItem(input: NewItemInput): Promise<Item> {
     input.tmdb_id ?? null,
     input.poster_path ?? null,
     input.notes ?? null,
+    serializeGenres(input.genres),
   );
   const id = Number(result.lastInsertRowid);
   const item = await getItem(id);
@@ -317,12 +374,12 @@ export async function findSimilar(
 ): Promise<Item[]> {
   await ensureSchema();
   const db = getDb();
-  const rows = await db.all(
+  const rows = (await db.all(
     `SELECT * FROM items WHERE format = ? AND lower(title) = lower(?) LIMIT 5`,
     format,
     title,
-  );
-  return rows as Item[];
+  )) as Array<Record<string, unknown>>;
+  return rows.map((row) => rowToItem(row)!);
 }
 
 export async function getCollectionStats(): Promise<CollectionStats> {

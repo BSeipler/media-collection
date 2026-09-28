@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { resolveIncomingTitle } from "@/lib/catalog-title";
 import { createItem, findSimilar, listItems } from "@/lib/db";
 import { isEbayConfigured } from "@/lib/ebay";
+import { normalizeGenreNames } from "@/lib/genres";
+import { lookupMovieGenres } from "@/lib/tmdb";
 import type { Format, NewItemInput } from "@/lib/types";
 import { valueItem } from "@/lib/valuation";
 
@@ -10,6 +12,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const items = await listItems({
       format: searchParams.get("format") ?? undefined,
+      genre: searchParams.get("genre") ?? undefined,
       q: searchParams.get("q") ?? undefined,
       sort: (searchParams.get("sort") as "value" | "title" | "newest") ?? "newest",
     });
@@ -44,7 +47,9 @@ export async function POST(request: NextRequest) {
       format,
       tmdb_id: body.tmdb_id ?? null,
       poster_path: body.poster_path ?? null,
+      genres: normalizeGenreNames(body.genres),
     });
+    const genres = await genresForItem(resolved.tmdb_id, resolved.genres);
     const similar = await findSimilar(resolved.title, format);
     if (similar.length > 0 && !body.force) {
       return NextResponse.json(
@@ -65,6 +70,7 @@ export async function POST(request: NextRequest) {
       condition: body.condition ?? "used",
       tmdb_id: resolved.tmdb_id,
       poster_path: resolved.poster_path,
+      genres,
       notes: body.notes ?? null,
     });
 
@@ -85,4 +91,14 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
+}
+
+async function genresForItem(
+  tmdbId: number | null,
+  provided: string[],
+): Promise<string[] | null> {
+  if (provided.length > 0) return provided;
+  if (tmdbId == null) return [];
+  const lookedUp = await lookupMovieGenres(tmdbId);
+  return lookedUp === undefined ? null : lookedUp;
 }
