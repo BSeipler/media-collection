@@ -1,3 +1,5 @@
+// One-off pass over titles already in the database.
+// New adds resolve the movie title in src/lib/catalog-title.ts.
 import { readFileSync } from "node:fs";
 import { connect } from "@tursodatabase/serverless";
 
