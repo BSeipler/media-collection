@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SignOutButton } from "./SignOutButton";
 
 export function Nav({
   active,
@@ -38,6 +39,7 @@ export function Nav({
               {link("/settings", "Settings", "settings")}
             </>
           )}
+          <SignOutButton />
         </nav>
       </div>
     </header>

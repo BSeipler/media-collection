@@ -29,6 +29,11 @@ export function ItemCard({ item }: { item: Item }) {
         <span className="absolute left-1.5 top-1.5 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-zinc-100">
           {item.format}
         </span>
+        {item.watch_status === "watched" ? (
+          <span className="absolute right-1.5 top-1.5 rounded bg-emerald-900/85 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-emerald-100">
+            Watched
+          </span>
+        ) : null}
       </div>
       <div className="flex flex-1 flex-col gap-0.5 p-2">
         <div className="line-clamp-2 text-xs font-medium leading-snug text-zinc-100 group-hover:text-amber-200">

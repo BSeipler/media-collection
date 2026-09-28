@@ -4,7 +4,7 @@ import { jwtVerify, type JWTPayload } from "jose";
 export const runtime = "nodejs";
 
 const COOKIE = "mc_session";
-const PUBLIC = ["/login", "/api/login"];
+const PUBLIC = ["/login", "/api/login", "/api/logout"];
 
 function secretKey() {
   const password = process.env.APP_PASSWORD ?? "changeme";

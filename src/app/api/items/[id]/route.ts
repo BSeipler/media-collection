@@ -28,6 +28,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     const body = (await request.json()) as {
       notes?: string;
       condition?: string;
+      watch_status?: string;
       override_dollars?: string | number | null;
       override_cents?: number | null;
     };
@@ -35,6 +36,15 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     const patch: Parameters<typeof updateItem>[1] = {};
     if (body.notes !== undefined) patch.notes = body.notes;
     if (body.condition !== undefined) patch.condition = body.condition;
+    if (body.watch_status !== undefined) {
+      if (body.watch_status !== "unwatched" && body.watch_status !== "watched") {
+        return NextResponse.json(
+          { error: "watch_status must be unwatched or watched" },
+          { status: 400 },
+        );
+      }
+      patch.watch_status = body.watch_status;
+    }
     if (body.override_cents !== undefined) {
       patch.override_cents = body.override_cents;
     } else if (body.override_dollars !== undefined) {

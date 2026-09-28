@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { centsToDollars, effectiveValueCents } from "@/lib/money";
 import { itemPosterUrl } from "@/lib/poster";
 import { compressCoverImage } from "@/lib/image-compress";
-import type { Comp, Item } from "@/lib/types";
+import type { Comp, Item, WatchStatus } from "@/lib/types";
 
 export function ItemDetail({
   item: initial,
@@ -49,6 +49,27 @@ export function ItemDetail({
       const d = await detail.json();
       if (d.comps) setComps(d.comps);
       setMsg("Asking-price estimate refreshed");
+      router.refresh();
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function setWatchStatus(watch_status: WatchStatus) {
+    if (readOnly || item.watch_status === watch_status) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/items/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ watch_status }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Save failed");
+      setItem(data.item);
       router.refresh();
     } catch (err) {
       setMsg(err instanceof Error ? err.message : "Failed");
@@ -214,6 +235,29 @@ export function ItemDetail({
               ))}
             </p>
           ) : null}
+          {readOnly ? (
+            <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+              {item.watch_status === "watched" ? "Watched" : "Unwatched"}
+            </p>
+          ) : (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {(["unwatched", "watched"] as const).map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void setWatchStatus(status)}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold capitalize disabled:opacity-50 ${
+                    item.watch_status === status
+                      ? "bg-emerald-500/20 text-emerald-300"
+                      : "bg-zinc-800 text-zinc-500"
+                  }`}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+          )}
           <p className="mt-3 text-2xl font-semibold tabular-nums text-amber-300">
             {centsToDollars(value)}
           </p>

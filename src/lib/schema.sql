@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS items (
   tmdb_id INTEGER,
   poster_path TEXT,
   genres TEXT,
+  watch_status TEXT NOT NULL DEFAULT 'unwatched',
   notes TEXT,
   estimated_cents INTEGER,
   estimate_low_cents INTEGER,
@@ -48,5 +49,5 @@ CREATE TABLE IF NOT EXISTS item_posters (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- has_custom_poster and genres added via ensureSchema ALTER for existing DBs
+-- has_custom_poster, genres, and watch_status added via ensureSchema ALTER for existing DBs
 

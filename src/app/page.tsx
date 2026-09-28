@@ -14,6 +14,7 @@ type Props = {
   searchParams: Promise<{
     format?: string;
     genre?: string;
+    watch?: string;
     sort?: string;
     q?: string;
   }>;
@@ -23,6 +24,7 @@ export default async function HomePage({ searchParams }: Props) {
   const sp = await searchParams;
   const format = sp.format ?? "all";
   const genre = sp.genre ?? "all";
+  const watch = sp.watch ?? "all";
   const sort = (sp.sort as "value" | "title" | "newest") ?? "newest";
   const q = sp.q ?? "";
   const ebayReady = isEbayConfigured();
@@ -36,7 +38,7 @@ export default async function HomePage({ searchParams }: Props) {
   try {
     await syncMissingGenres();
     [items, stats, genres] = await Promise.all([
-      listItems({ format, genre, sort, q }),
+      listItems({ format, genre, watch_status: watch, sort, q }),
       getCollectionStats(),
       listGenreNames(),
     ]);
@@ -75,6 +77,7 @@ export default async function HomePage({ searchParams }: Props) {
                 format={format}
                 genre={genre}
                 genres={genres}
+                watch={watch}
                 sort={sort}
                 q={q}
                 guest={guest}

@@ -1,4 +1,5 @@
 export type Format = "vhs" | "dvd" | "other";
+export type WatchStatus = "unwatched" | "watched";
 export type Confidence = "high" | "medium" | "low" | null;
 
 export type Item = {
@@ -12,6 +13,7 @@ export type Item = {
   poster_path: string | null;
   genres: string[];
   has_custom_poster: number;
+  watch_status: WatchStatus;
   notes: string | null;
   estimated_cents: number | null;
   estimate_low_cents: number | null;
@@ -71,4 +73,5 @@ export type NewItemInput = {
   poster_path?: string | null;
   genres?: string[] | null;
   notes?: string | null;
+  watch_status?: WatchStatus;
 };

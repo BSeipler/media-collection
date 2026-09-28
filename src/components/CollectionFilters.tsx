@@ -7,6 +7,7 @@ export function CollectionFilters({
   format,
   genre,
   genres,
+  watch,
   sort,
   q,
   guest = false,
@@ -14,6 +15,7 @@ export function CollectionFilters({
   format: string;
   genre: string;
   genres: string[];
+  watch: string;
   sort: string;
   q: string;
   guest?: boolean;
@@ -94,6 +96,22 @@ export function CollectionFilters({
             Export CSV
           </a>
         )}
+      </div>
+      <div className="flex flex-wrap gap-2" aria-label="Watch status">
+        {(["all", "unwatched", "watched"] as const).map((w) => (
+          <button
+            key={w}
+            type="button"
+            onClick={() => update({ watch: w })}
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize ${
+              watch === w
+                ? "bg-emerald-500/20 text-emerald-300"
+                : "bg-zinc-900 text-zinc-500"
+            }`}
+          >
+            {w === "all" ? "All" : w}
+          </button>
+        ))}
       </div>
     </div>
   );

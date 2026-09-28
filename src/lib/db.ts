@@ -5,6 +5,7 @@ import type {
   Item,
   NewItemInput,
   Settings,
+  WatchStatus,
 } from "./types";
 import { parseGenres, serializeGenres } from "./genres";
 import { effectiveValueCents } from "./money";
@@ -49,6 +50,7 @@ export async function ensureSchema(): Promise<void> {
       tmdb_id INTEGER,
       poster_path TEXT,
       genres TEXT,
+      watch_status TEXT NOT NULL DEFAULT 'unwatched',
       notes TEXT,
       estimated_cents INTEGER,
       estimate_low_cents INTEGER,
@@ -93,13 +95,26 @@ export async function ensureSchema(): Promise<void> {
   if (!cols.some((c) => c.name === "genres")) {
     await db.exec("ALTER TABLE items ADD COLUMN genres TEXT");
   }
+  if (!cols.some((c) => c.name === "watch_status")) {
+    await db.exec(
+      "ALTER TABLE items ADD COLUMN watch_status TEXT NOT NULL DEFAULT 'unwatched'",
+    );
+  }
 
   schemaReady = true;
 }
 
+function parseWatchStatus(value: unknown): WatchStatus {
+  return value === "watched" ? "watched" : "unwatched";
+}
+
 function rowToItem(row: Record<string, unknown> | null | undefined): Item | null {
   if (!row) return null;
-  return { ...(row as unknown as Item), genres: parseGenres(row.genres) };
+  return {
+    ...(row as unknown as Item),
+    genres: parseGenres(row.genres),
+    watch_status: parseWatchStatus(row.watch_status),
+  };
 }
 
 export async function getSettings(): Promise<Settings> {
@@ -122,6 +137,7 @@ export async function updateLotCost(lotCostCents: number): Promise<Settings> {
 export async function listItems(opts?: {
   format?: string;
   genre?: string;
+  watch_status?: string;
   q?: string;
   sort?: "value" | "title" | "newest";
 }): Promise<Item[]> {
@@ -133,6 +149,10 @@ export async function listItems(opts?: {
   if (opts?.format && opts.format !== "all") {
     clauses.push("format = ?");
     args.push(opts.format);
+  }
+  if (opts?.watch_status === "unwatched" || opts?.watch_status === "watched") {
+    clauses.push("watch_status = ?");
+    args.push(opts.watch_status);
   }
   if (opts?.genre && opts.genre !== "all") {
     clauses.push(
@@ -218,8 +238,8 @@ export async function createItem(input: NewItemInput): Promise<Item> {
   await ensureSchema();
   const db = getDb();
   const result = await db.run(
-    `INSERT INTO items (title, year, format, upc, condition, tmdb_id, poster_path, notes, genres)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO items (title, year, format, upc, condition, tmdb_id, poster_path, notes, genres, watch_status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     input.title,
     input.year ?? null,
     input.format,
@@ -229,6 +249,7 @@ export async function createItem(input: NewItemInput): Promise<Item> {
     input.poster_path ?? null,
     input.notes ?? null,
     serializeGenres(input.genres),
+    input.watch_status === "watched" ? "watched" : "unwatched",
   );
   const id = Number(result.lastInsertRowid);
   const item = await getItem(id);
@@ -249,6 +270,7 @@ export async function updateItem(
       | "tmdb_id"
       | "poster_path"
       | "notes"
+      | "watch_status"
       | "override_cents"
       | "estimated_cents"
       | "estimate_low_cents"
