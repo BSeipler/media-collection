@@ -202,6 +202,18 @@ export function ItemDetail({
             {item.year ?? "—"} · {item.format.toUpperCase()}
             {item.upc ? ` · UPC ${item.upc}` : ""}
           </p>
+          {item.genres.length > 0 ? (
+            <p className="mt-1 text-sm text-zinc-500">
+              {item.genres.map((name, index) => (
+                <span key={name}>
+                  {index > 0 ? " · " : null}
+                  <a href={`/?genre=${encodeURIComponent(name)}`} className="hover:text-amber-300">
+                    {name}
+                  </a>
+                </span>
+              ))}
+            </p>
+          ) : null}
           <p className="mt-3 text-2xl font-semibold tabular-nums text-amber-300">
             {centsToDollars(value)}
           </p>

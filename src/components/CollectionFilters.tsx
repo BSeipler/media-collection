@@ -5,11 +5,15 @@ import { useTransition } from "react";
 
 export function CollectionFilters({
   format,
+  genre,
+  genres,
   sort,
   q,
   guest = false,
 }: {
   format: string;
+  genre: string;
+  genres: string[];
   sort: string;
   q: string;
   guest?: boolean;
@@ -56,6 +60,22 @@ export function CollectionFilters({
             {f}
           </button>
         ))}
+        <select
+          value={genre}
+          onChange={(e) => update({ genre: e.target.value })}
+          aria-label="Genre"
+          className="rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-xs text-zinc-300"
+        >
+          <option value="all">All genres</option>
+          {(genre !== "all" && !genres.includes(genre)
+            ? [genre, ...genres]
+            : genres
+          ).map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
         <select
           value={sort}
           onChange={(e) => update({ sort: e.target.value })}

@@ -20,6 +20,7 @@ export type TitleMatch = {
   year: number | null;
   tmdb_id: number;
   poster_path: string | null;
+  genres: string[];
   score: number;
 };
 
@@ -105,6 +106,7 @@ export async function rankMovieTitles(
     year: yearFromDate(movie.release_date),
     tmdb_id: movie.id,
     poster_path: movie.poster_path,
+    genres: movie.genres,
     score: scoreListing(listing, movie.title),
     popularity: movie.popularity ?? 0,
   }));
@@ -121,6 +123,7 @@ export async function rankMovieTitles(
     year: match.year,
     tmdb_id: match.tmdb_id,
     poster_path: match.poster_path,
+    genres: match.genres,
     score: match.score,
   }));
 }
@@ -147,27 +150,31 @@ export async function resolveIncomingTitle(input: {
   format: Format;
   tmdb_id: number | null;
   poster_path: string | null;
+  genres?: string[];
 }): Promise<{
   title: string;
   year: number | null;
   tmdb_id: number | null;
   poster_path: string | null;
+  genres: string[];
 }> {
-  if (!shouldResolveTitle(input)) return input;
+  const genres = input.genres ?? [];
+  if (!shouldResolveTitle(input)) return { ...input, genres };
 
   try {
     const match = confidentMatch(
       await rankMovieTitles(input.title, input.format),
     );
-    if (!match) return input;
+    if (!match) return { ...input, genres };
     return {
       title: match.title,
       year: match.year,
       tmdb_id: input.tmdb_id ?? match.tmdb_id,
       poster_path: input.poster_path ?? match.poster_path,
+      genres: genres.length > 0 ? genres : match.genres,
     };
   } catch (err) {
     console.error("Title resolve failed", err);
-    return input;
+    return { ...input, genres };
   }
 }

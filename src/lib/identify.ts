@@ -67,6 +67,7 @@ export async function identifyByTitle(
     upc: null,
     tmdb_id: m.id,
     poster_path: m.poster_path,
+    genres: m.genres,
     source: "tmdb" as const,
     confidence: (i === 0 ? "medium" : "low") as "medium" | "low",
   }));
@@ -97,6 +98,7 @@ async function candidatesFromListing(
       upc,
       tmdb_id: match.tmdb_id,
       poster_path: match.poster_path,
+      genres: match.genres,
       source,
       confidence:
         best && match.tmdb_id === best.tmdb_id ? "high" : "medium",
@@ -111,6 +113,7 @@ async function candidatesFromListing(
       upc,
       tmdb_id: null,
       poster_path: fallbackPoster,
+      genres: [],
       source,
       confidence: source === "upcitemdb" ? "low" : "medium",
     },

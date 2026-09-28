@@ -10,6 +10,7 @@ export type Item = {
   condition: string | null;
   tmdb_id: number | null;
   poster_path: string | null;
+  genres: string[];
   has_custom_poster: number;
   notes: string | null;
   estimated_cents: number | null;
@@ -55,6 +56,7 @@ export type IdentifyCandidate = {
   upc: string | null;
   tmdb_id: number | null;
   poster_path: string | null;
+  genres: string[];
   source: "ebay" | "upcitemdb" | "tmdb" | "manual";
   confidence: "high" | "medium" | "low";
 };
@@ -67,5 +69,6 @@ export type NewItemInput = {
   condition?: string;
   tmdb_id?: number | null;
   poster_path?: string | null;
+  genres?: string[] | null;
   notes?: string | null;
 };

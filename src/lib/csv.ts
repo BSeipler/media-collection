@@ -33,6 +33,7 @@ const HEADERS = [
   "notes",
   "created_at",
   "updated_at",
+  "genres",
 ] as const;
 
 export function itemsToCsv(items: Item[]): string {
@@ -58,6 +59,7 @@ export function itemsToCsv(items: Item[]): string {
         escapeCsv(item.notes),
         item.created_at,
         item.updated_at,
+        escapeCsv(item.genres.join("; ")),
       ].join(","),
     );
   }

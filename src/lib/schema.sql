@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS items (
   condition TEXT DEFAULT 'used',
   tmdb_id INTEGER,
   poster_path TEXT,
+  genres TEXT,
   notes TEXT,
   estimated_cents INTEGER,
   estimate_low_cents INTEGER,
@@ -47,5 +48,5 @@ CREATE TABLE IF NOT EXISTS item_posters (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- has_custom_poster added via ensureSchema ALTER for existing DBs
+-- has_custom_poster and genres added via ensureSchema ALTER for existing DBs
 

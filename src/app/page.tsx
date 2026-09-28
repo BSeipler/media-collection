@@ -3,32 +3,42 @@ import { Nav } from "@/components/Nav";
 import { StatsBar } from "@/components/StatsBar";
 import { ItemCard } from "@/components/ItemCard";
 import { CollectionFilters } from "@/components/CollectionFilters";
-import { getCollectionStats, listItems } from "@/lib/db";
+import { getCollectionStats, listGenreNames, listItems } from "@/lib/db";
 import { isEbayConfigured } from "@/lib/ebay";
 import { getSessionRole } from "@/lib/auth";
+import { syncMissingGenres } from "@/lib/sync-genres";
 
 export const dynamic = "force-dynamic";
 
 type Props = {
-  searchParams: Promise<{ format?: string; sort?: string; q?: string }>;
+  searchParams: Promise<{
+    format?: string;
+    genre?: string;
+    sort?: string;
+    q?: string;
+  }>;
 };
 
 export default async function HomePage({ searchParams }: Props) {
   const sp = await searchParams;
   const format = sp.format ?? "all";
+  const genre = sp.genre ?? "all";
   const sort = (sp.sort as "value" | "title" | "newest") ?? "newest";
   const q = sp.q ?? "";
   const ebayReady = isEbayConfigured();
   const guest = (await getSessionRole()) === "guest";
 
   let items: Awaited<ReturnType<typeof listItems>> = [];
+  let genres: string[] = [];
   let stats: Awaited<ReturnType<typeof getCollectionStats>> | null = null;
   let error: string | null = null;
 
   try {
-    [items, stats] = await Promise.all([
-      listItems({ format, sort, q }),
+    await syncMissingGenres();
+    [items, stats, genres] = await Promise.all([
+      listItems({ format, genre, sort, q }),
       getCollectionStats(),
+      listGenreNames(),
     ]);
   } catch (err) {
     error = err instanceof Error ? err.message : "Database unavailable";
@@ -61,20 +71,33 @@ export default async function HomePage({ searchParams }: Props) {
               </div>
             ) : null}
             <Suspense fallback={null}>
-              <CollectionFilters format={format} sort={sort} q={q} guest={guest} />
+              <CollectionFilters
+                format={format}
+                genre={genre}
+                genres={genres}
+                sort={sort}
+                q={q}
+                guest={guest}
+              />
             </Suspense>
             {items.length === 0 ? (
-              <div className="mt-10 text-center">
-                <p className="text-zinc-400">No titles yet.</p>
-                {guest ? null : (
-                  <a
-                    href="/add"
-                    className="mt-3 inline-block rounded-xl bg-amber-500 px-4 py-3 text-sm font-semibold text-zinc-950"
-                  >
-                    Scan your first tape
-                  </a>
-                )}
-              </div>
+              stats && stats.count > 0 ? (
+                <p className="mt-10 text-center text-zinc-400">
+                  No titles match these filters.
+                </p>
+              ) : (
+                <div className="mt-10 text-center">
+                  <p className="text-zinc-400">No titles yet.</p>
+                  {guest ? null : (
+                    <a
+                      href="/add"
+                      className="mt-3 inline-block rounded-xl bg-amber-500 px-4 py-3 text-sm font-semibold text-zinc-950"
+                    >
+                      Scan your first tape
+                    </a>
+                  )}
+                </div>
+              )
             ) : (
               <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
                 {items.map((item) => (
