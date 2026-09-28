@@ -4,6 +4,7 @@ export type TmdbMovie = {
   release_date: string | null;
   poster_path: string | null;
   overview: string | null;
+  popularity?: number;
 };
 
 function tmdbKey(): string | null {
@@ -36,6 +37,7 @@ export async function searchMovies(query: string): Promise<TmdbMovie[]> {
       release_date?: string;
       poster_path?: string | null;
       overview?: string;
+      popularity?: number;
     }>;
   };
 
@@ -45,6 +47,7 @@ export async function searchMovies(query: string): Promise<TmdbMovie[]> {
     release_date: m.release_date ?? null,
     poster_path: m.poster_path ?? null,
     overview: m.overview ?? null,
+    popularity: m.popularity ?? 0,
   }));
 }
 

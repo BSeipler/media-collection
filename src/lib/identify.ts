@@ -1,3 +1,8 @@
+import {
+  confidentMatch,
+  rankMovieTitles,
+  type TitleMatch,
+} from "./catalog-title";
 import { searchByGtin } from "./ebay";
 import { searchMovies, yearFromDate } from "./tmdb";
 import {
@@ -23,33 +28,9 @@ export async function identifyByUpc(
   if (ebayHits.length > 0) {
     const top = ebayHits[0];
     const format = preferredFormat ?? guessFormat(top.title);
-    const cleanedTitle = cleanProductTitle(top.title);
-    const movies = await searchMovies(cleanedTitle);
-    if (movies.length > 0) {
-      for (const m of movies.slice(0, 3)) {
-        candidates.push({
-          title: m.title,
-          year: yearFromDate(m.release_date),
-          format,
-          upc: cleaned,
-          tmdb_id: m.id,
-          poster_path: m.poster_path,
-          source: "ebay",
-          confidence: movies.length === 1 ? "high" : "medium",
-        });
-      }
-    } else {
-      candidates.push({
-        title: cleanedTitle || top.title,
-        year: null,
-        format,
-        upc: cleaned,
-        tmdb_id: null,
-        poster_path: null,
-        source: "ebay",
-        confidence: "medium",
-      });
-    }
+    candidates.push(
+      ...(await candidatesFromListing(top.title, format, cleaned, "ebay", null)),
+    );
   }
 
   if (candidates.length > 0) return dedupe(candidates);
@@ -60,33 +41,15 @@ export async function identifyByUpc(
     const format =
       preferredFormat ??
       guessFormat(`${upcItem.title} ${upcItem.description ?? ""}`);
-    const cleanedTitle = cleanProductTitle(upcItem.title);
-    const movies = await searchMovies(cleanedTitle);
-    if (movies.length > 0) {
-      for (const m of movies.slice(0, 3)) {
-        candidates.push({
-          title: m.title,
-          year: yearFromDate(m.release_date),
-          format,
-          upc: cleaned,
-          tmdb_id: m.id,
-          poster_path: m.poster_path,
-          source: "upcitemdb",
-          confidence: movies.length === 1 ? "high" : "medium",
-        });
-      }
-    } else {
-      candidates.push({
-        title: cleanedTitle,
-        year: null,
+    candidates.push(
+      ...(await candidatesFromListing(
+        upcItem.title,
         format,
-        upc: cleaned,
-        tmdb_id: null,
-        poster_path: upcItem.images[0] ?? null,
-        source: "upcitemdb",
-        confidence: "low",
-      });
-    }
+        cleaned,
+        "upcitemdb",
+        upcItem.images[0] ?? null,
+      )),
+    );
   }
 
   return dedupe(candidates);
@@ -107,6 +70,51 @@ export async function identifyByTitle(
     source: "tmdb" as const,
     confidence: (i === 0 ? "medium" : "low") as "medium" | "low",
   }));
+}
+
+async function candidatesFromListing(
+  productTitle: string,
+  format: Format,
+  upc: string,
+  source: "ebay" | "upcitemdb",
+  fallbackPoster: string | null,
+): Promise<IdentifyCandidate[]> {
+  const ranked = await rankMovieTitles(productTitle, format);
+  const best = confidentMatch(ranked);
+  const viable = ranked.filter((match) => match.score >= 78).slice(0, 3);
+  const shown: TitleMatch[] = best
+    ? [
+        best,
+        ...viable.filter((match) => match.tmdb_id !== best.tmdb_id),
+      ].slice(0, 3)
+    : viable;
+
+  if (shown.length > 0) {
+    return shown.map((match) => ({
+      title: match.title,
+      year: match.year,
+      format,
+      upc,
+      tmdb_id: match.tmdb_id,
+      poster_path: match.poster_path,
+      source,
+      confidence:
+        best && match.tmdb_id === best.tmdb_id ? "high" : "medium",
+    }));
+  }
+
+  return [
+    {
+      title: cleanProductTitle(productTitle) || productTitle,
+      year: null,
+      format,
+      upc,
+      tmdb_id: null,
+      poster_path: fallbackPoster,
+      source,
+      confidence: source === "upcitemdb" ? "low" : "medium",
+    },
+  ];
 }
 
 function dedupe(candidates: IdentifyCandidate[]): IdentifyCandidate[] {

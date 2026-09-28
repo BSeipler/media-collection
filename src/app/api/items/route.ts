@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolveIncomingTitle } from "@/lib/catalog-title";
 import { createItem, findSimilar, listItems } from "@/lib/db";
 import { isEbayConfigured } from "@/lib/ebay";
 import type { Format, NewItemInput } from "@/lib/types";
@@ -37,26 +38,33 @@ export async function POST(request: NextRequest) {
     }
 
     const format = body.format as Format;
-    const similar = await findSimilar(body.title.trim(), format);
+    const resolved = await resolveIncomingTitle({
+      title: body.title.trim(),
+      year: body.year ?? null,
+      format,
+      tmdb_id: body.tmdb_id ?? null,
+      poster_path: body.poster_path ?? null,
+    });
+    const similar = await findSimilar(resolved.title, format);
     if (similar.length > 0 && !body.force) {
       return NextResponse.json(
         {
           warning: "similar",
           similar,
-          message: `You may already have "${body.title}" on ${format.toUpperCase()}.`,
+          message: `You may already have "${resolved.title}" on ${format.toUpperCase()}.`,
         },
         { status: 409 },
       );
     }
 
     let item = await createItem({
-      title: body.title.trim(),
-      year: body.year ?? null,
+      title: resolved.title,
+      year: resolved.year,
       format,
       upc: body.upc ?? null,
       condition: body.condition ?? "used",
-      tmdb_id: body.tmdb_id ?? null,
-      poster_path: body.poster_path ?? null,
+      tmdb_id: resolved.tmdb_id,
+      poster_path: resolved.poster_path,
       notes: body.notes ?? null,
     });
 
